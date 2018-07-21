@@ -48,10 +48,13 @@ void RF24::csn(bool mode)
 	    _SPI.chipSelect(csn_pin);
 #endif
 
-#if !defined (RF24_LINUX)
+#if defined (__MBED__)
+      gpio_csn = mode;
+#elif !defined (RF24_LINUX)
 	digitalWrite(csn_pin,mode);
 	delayMicroseconds(csDelay);
 #endif
+
 
 }
 
@@ -59,8 +62,12 @@ void RF24::csn(bool mode)
 
 void RF24::ce(bool level)
 {
+#if defined (__MBED__)
+  gpio_ce = level;
+#else
   //Allow for 3-pin use on ATTiny
   if (ce_pin != csn_pin) digitalWrite(ce_pin,level);
+#endif
 }
 
 /****************************************************************************/
@@ -87,7 +94,7 @@ uint8_t RF24::read_register(uint8_t reg, uint8_t* buf, uint8_t len)
 {
   uint8_t status;
 
-  #if defined (RF24_LINUX)
+  #if defined (RF24_LINUX) || defined(__MBED__)
   beginTransaction(); //configures the spi settings for RPi, locks mutex and setting csn low
   uint8_t * prx = spi_rxbuff;
   uint8_t * ptx = spi_txbuff;
@@ -125,7 +132,7 @@ uint8_t RF24::read_register(uint8_t reg)
 {
   uint8_t result;
   
-  #if defined (RF24_LINUX)
+  #if defined (RF24_LINUX) || defined (__MBED__)
 	
   beginTransaction();
   
@@ -156,7 +163,7 @@ uint8_t RF24::write_register(uint8_t reg, const uint8_t* buf, uint8_t len)
 {
   uint8_t status;
 
-  #if defined (RF24_LINUX) 
+  #if defined (RF24_LINUX) || defined (__MBED__)
   beginTransaction();
   uint8_t * prx = spi_rxbuff;
   uint8_t * ptx = spi_txbuff;
@@ -190,7 +197,7 @@ uint8_t RF24::write_register(uint8_t reg, uint8_t value)
 
   IF_SERIAL_DEBUG(printf_P(PSTR("write_register(%02x,%02x)\r\n"),reg,value));
 
-  #if defined (RF24_LINUX)
+  #if defined (RF24_LINUX) || defined (__MBED__)
     beginTransaction();
 	uint8_t * prx = spi_rxbuff;
 	uint8_t * ptx = spi_txbuff;
@@ -225,7 +232,7 @@ uint8_t RF24::write_payload(const void* buf, uint8_t data_len, const uint8_t wri
   //printf("[Writing %u bytes %u blanks]",data_len,blank_len);
   IF_SERIAL_DEBUG( printf("[Writing %u bytes %u blanks]\n",data_len,blank_len); );
   
- #if defined (RF24_LINUX)
+  #if defined (RF24_LINUX) || defined (__MBED__)
 	beginTransaction();
 	uint8_t * prx = spi_rxbuff;
 	uint8_t * ptx = spi_txbuff;
@@ -273,7 +280,7 @@ uint8_t RF24::read_payload(void* buf, uint8_t data_len)
 
   IF_SERIAL_DEBUG( printf("[Reading %u bytes %u blanks]\n",data_len,blank_len); );
   
-  #if defined (RF24_LINUX)
+  #if defined (RF24_LINUX) || defined (__MBED__)
 	beginTransaction();
 	uint8_t * prx = spi_rxbuff;
 	uint8_t * ptx = spi_txbuff;
@@ -379,7 +386,7 @@ void RF24::print_byte_register(const char* name, uint8_t reg, uint8_t qty)
 {
   //char extra_tab = strlen_P(name) < 8 ? '\t' : 0;
   //printf_P(PSTR(PRIPSTR"\t%c ="),name,extra_tab);
-  #if defined (RF24_LINUX)
+  #if defined (RF24_LINUX) || defined (__MBED__)
     printf("%s\t =", name);
   #else
     printf_P(PSTR(PRIPSTR"\t ="),name);
@@ -394,7 +401,7 @@ void RF24::print_byte_register(const char* name, uint8_t reg, uint8_t qty)
 void RF24::print_address_register(const char* name, uint8_t reg, uint8_t qty)
 {
 
-  #if defined (RF24_LINUX)
+  #if defined (RF24_LINUX) || defined (__MBED__)
     printf("%s\t =",name);
   #else
     printf_P(PSTR(PRIPSTR"\t ="),name);
@@ -416,6 +423,9 @@ void RF24::print_address_register(const char* name, uint8_t reg, uint8_t qty)
 /****************************************************************************/
 
 RF24::RF24(uint16_t _cepin, uint16_t _cspin):
+#if defined(__MBED__)
+  gpio_ce(static_cast<PinName>(_cepin)), gpio_csn(static_cast<PinName>(_cspin)),
+#endif
   ce_pin(_cepin), csn_pin(_cspin), p_variant(false),
   payload_size(32), dynamic_payloads_enabled(false), addr_width(5),csDelay(5)//,pipe0_reading_address(0)
 {
@@ -605,27 +615,28 @@ bool RF24::begin(void)
     csn(HIGH);
   #elif defined(XMEGA_D3)
 	if (ce_pin != csn_pin) pinMode(ce_pin,OUTPUT);
-	_SPI.begin(csn_pin);
-	ce(LOW);
-	csn(HIGH);
-	delay(200);
+        _SPI.begin(csn_pin);
+        ce(LOW);
+        csn(HIGH);
+        delay(200);
   #else
+  #if !defined (__MBED__)
     // Initialize pins
     if (ce_pin != csn_pin) pinMode(ce_pin,OUTPUT);  
-  
+
     #if ! defined(LITTLEWIRE)
       if (ce_pin != csn_pin)
     #endif
         pinMode(csn_pin,OUTPUT);
+  #endif
     
     _SPI.begin();
     ce(LOW);
-  	csn(HIGH);
+       csn(HIGH);
   	#if defined (__ARDUINO_X86__)
 		delay(100);
   	#endif
   #endif //Linux
-
   // Must allow the radio time to settle else configuration bits will not necessarily stick.
   // This is actually only required following power up but some settling time also appears to
   // be required after resets too. For full coverage, we'll always assume the worst.
