@@ -24,11 +24,12 @@ typedef uint16_t prog_uint16_t;
 #define pgm_read_word(p) (*(p))
 #define PRIPSTR "%s"
 #define pgm_read_byte(p) (*(p))
+#define pgm_read_ptr(p)  (*(p))
 
 // Function, constant map as a result of migrating from Arduino
 #define LOW 0
 #define HIGH 1
-#define delay(milisec) wait_ms(milisec)
+#define delay(milisec) wait_us(milisec * 1000)
 #define delayMicroseconds(usec) wait_us(usec)
 
 #endif // __ARCH_CONFIG_H__

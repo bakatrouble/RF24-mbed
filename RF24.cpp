@@ -544,7 +544,12 @@ uint8_t RF24::sprintf_address_register(char* out_buffer, uint8_t reg, uint8_t qt
 /****************************************************************************/
 
 RF24::RF24(uint16_t _cepin, uint16_t _cspin, uint32_t _spi_speed)
-    : ce_pin(_cepin), csn_pin(_cspin), spi_speed(_spi_speed), payload_size(32), _is_p_variant(false), _is_p0_rx(false), addr_width(5), dynamic_payloads_enabled(true), csDelay(5)
+    :
+#if defined(__MBED__)
+gpio_ce(static_cast<PinName>(_cepin)), gpio_csn(static_cast<PinName>(_cspin)),
+#endif
+    ce_pin(_cepin), csn_pin(_cspin),
+    spi_speed(_spi_speed), payload_size(32), _is_p_variant(false), _is_p0_rx(false), addr_width(5), dynamic_payloads_enabled(true), csDelay(5)
 {
     _init_obj();
 }
@@ -552,7 +557,12 @@ RF24::RF24(uint16_t _cepin, uint16_t _cspin, uint32_t _spi_speed)
 /****************************************************************************/
 
 RF24::RF24(uint32_t _spi_speed)
-    : ce_pin(0xFFFF), csn_pin(0xFFFF), spi_speed(_spi_speed), payload_size(32), _is_p_variant(false), _is_p0_rx(false), addr_width(5), dynamic_payloads_enabled(true), csDelay(5)
+    :
+#if defined(__MBED__)
+        gpio_ce(static_cast<PinName>(0xFFFF)), gpio_csn(static_cast<PinName>(0xFFFF)),
+#endif
+    ce_pin(0xFFFF), csn_pin(0xFFFF),
+    spi_speed(_spi_speed), payload_size(32), _is_p_variant(false), _is_p0_rx(false), addr_width(5), dynamic_payloads_enabled(true), csDelay(5)
 {
     _init_obj();
 }
